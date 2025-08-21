@@ -35,18 +35,18 @@ class product:
         navbar.pack(fill=X)
 
         btn_config = [
-            ("Home", None),
+            ("Home", self.root.destroy),
             ("Employee", self.employee2),
-            ("Categories", self.category),
-            ("Billing", self.Bill_Area),
+            ("Product Categories", self.category),
             ("Product", self.product),
+            ("Billing", self.Bill_Area),
             ("Sales", self.Sales),
-            ("Back", None)
         ]
         for name, cmd in btn_config:
             Button(navbar, text=name, bg="#333", fg="white", font=("Arial", 12, "bold"),
                    bd=0, cursor="hand2", activebackground="#555", activeforeground="white",
                    command=cmd).pack(side=LEFT, padx=15, pady=10)
+        
 
     def create_search_frame(self):
         # Adjusting the search frame layout
@@ -147,6 +147,10 @@ class product:
             self.page_window.destroy()
 
     def product_get_data(self, event=None):
+        region = self.product_table.identify_region(event.x, event.y)
+        row_id = self.product_table.identify_row(event.y)
+        if region != "cell" or not row_id:
+            return
         self.f.Product_get_data((self.root, self.name_entry, self.category_entry, self.supplier_entry, self.price_entry, self.quantity_entry, self.status_entry, self.product_table))
 
     def product_clear(self):

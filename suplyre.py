@@ -7,10 +7,10 @@ class SupplyreClass:
         self.root = root
         self.root.title("Inventory Management System - Supplier Management")
         self.root.geometry("1335x615+200+135")
-        self.root.minsize(1000, 600)
         self.root.configure(bg="#f0f0f0")
-        self.root.state("zoomed")
-
+        self.root.state('zoomed')
+        self.root.minsize(1000, 600)
+        self.root.overrideredirect(True)
         # Functions Instance
         self.f = Functions.function()
 
@@ -37,9 +37,8 @@ class SupplyreClass:
         self.Search_Entry = ttk.Entry(search_frame, font=("arial", 15), background="#fffacd")  # Yellowish field
         self.Search_Entry.pack(side=LEFT, fill=X, expand=True, padx=10)
 
-        btn_Search = Button(search_frame, text="Search", command=self.Sup_Search, bg="green", fg="white",
-                            font=("times new roman", 15, "bold"), cursor="hand2")
-        btn_Search.pack(side=LEFT, padx=10)
+        btn_Search = Button(search_frame, text="Search", command=self.Sup_Search, bg="green", fg="white",font=("times new roman", 15, "bold"),cursor="hand2")
+        btn_Search.pack(side=LEFT ,padx=10)
 
         # Left Form Section
         form_frame = Frame(self.root, bg="#f0f0f0", bd=2, relief=SOLID)
@@ -73,17 +72,17 @@ class SupplyreClass:
         btn_frame = Frame(form_frame, bg="#f0f0f0")
         btn_frame.place(relx=0.02, rely=0.65, relwidth=0.95, relheight=0.2)
 
-        btn_add = Button(btn_frame, text="Save", command=self.Sup_Add, bg="blue", fg="white", font=("times new roman", 15, "bold"), cursor="hand2")
-        btn_add.pack(side=LEFT, padx=10, expand=True)
+        btn_add = Button(btn_frame, text="Save", command=self.Sup_Add, bg="blue", fg="white", font=("times new roman", 15, "bold"),padx=20 ,cursor="hand2")
+        btn_add.pack(side=LEFT, padx=8, expand=True)
 
-        btn_update = Button(btn_frame, text="Update", command=self.Sup_Update, bg="green", fg="white", font=("times new roman", 15, "bold"), cursor="hand2")
-        btn_update.pack(side=LEFT, padx=10, expand=True)
+        btn_update = Button(btn_frame, text="Update", command=self.Sup_Update, bg="green", fg="white", font=("times new roman", 15, "bold"),padx=20 ,cursor="hand2")
+        btn_update.pack(side=LEFT, padx=8, expand=True)
 
-        btn_delete = Button(btn_frame, text="Delete", command=self.Sup_Delete, bg="red", fg="white", font=("times new roman", 15, "bold"), cursor="hand2")
-        btn_delete.pack(side=LEFT, padx=10, expand=True)
+        btn_delete = Button(btn_frame, text="Delete", command=self.Sup_Delete, bg="red", fg="white", font=("times new roman", 15, "bold"),padx=20, cursor="hand2")
+        btn_delete.pack(side=LEFT, padx=8, expand=True)
 
-        btn_clear = Button(btn_frame, text="Clear", command=self.Sup_Clear, bg="pink", fg="black", font=("times new roman", 15, "bold"), cursor="hand2")
-        btn_clear.pack(side=LEFT, padx=10, expand=True)
+        btn_clear = Button(btn_frame, text="Clear", command=self.Sup_Clear, bg="pink", fg="black", font=("times new roman", 15, "bold"),padx=25, cursor="hand2")
+        btn_clear.pack(side=LEFT, padx=8, expand=True)
 
         # Table Section
         table_frame = Frame(self.root, bg="#f0f0f0", bd=2, relief=SOLID)
@@ -123,13 +122,12 @@ class SupplyreClass:
         navbar.pack(fill=X)
 
         btn_config = [
-            ("Home", self.Back),
+            ("Home", self.root.destroy),
             ("Employee", self.employee2),
-            ("Categories", self.category),
-            ("Billing", self.Bill_Area),
+            ("Product Category",self.category),
             ("Product", self.product),
+            ("Billing", self.Bill_Area),
             ("Sales", self.Sales),
-            ("Back", self.root.destroy)
         ]
         for name, cmd in btn_config:
             Button(navbar, text=name, bg="#333", fg="white", font=("Arial", 12, "bold"),
@@ -146,6 +144,10 @@ class SupplyreClass:
         self.f.Suplier_show(self.Supplier_Table, mytuple[0])
 
     def Sup_Get_data(self, event=None):
+        region = self.Supplier_Table.identify_region(event.x, event.y)
+        row_id = self.Supplier_Table.identify_row(event.y)
+        if region != "cell" or not row_id:
+            return
         mytuple = (self.root, self.Sup_Entry, self.name_Entry, self.Contact_Entry, self.DEsc_Entry, self.Supplier_Table, self.Search_Entry)
         self.f.Suplier_get_data(mytuple)
 
@@ -169,40 +171,35 @@ class SupplyreClass:
         self.f.suplier_search(mytuple)
 
     def employee2(self):
-        self.root.destroy()
         from Employee import page2
         new_root = Tk()
         self.new_obj = page2(new_root)
+        self.root.destroy()
 
     
     def category(self):
-        self.root.destroy()
         from Category import Categorie
         new_root = Tk()
         self.new_obj = Categorie(new_root)
+        self.root.destroy()
         
     def Sales(self):
-        self.root.destroy()
         from Sales import Sales
         new_root = Tk()
         self.new_obj = Sales(new_root)
+        self.root.destroy()
         
     def product(self):
-        self.root.destroy()
         from product import product
         new_root = Tk()
         self.new_obj = product(new_root)
+        self.root.destroy()
 
     def Bill_Area(self):
-        self.root.destroy()
         new_root = Tk()
         from Main_billsection import Billing_area
         self.new_obj = Billing_area(new_root)
-    
-    def Back(self):
         self.root.destroy()
-        
-
 
 if __name__ == "__main__":
     root = Tk()

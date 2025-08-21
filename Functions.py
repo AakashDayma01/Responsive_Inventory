@@ -23,17 +23,33 @@ class function:
         #else:
          #       return False    
         
-    def check_name(self,name):
-       name = name.get()
-       if name[0].isalpha()!=True:
-           return False
-       else :
-           for i in name :
-               if i == " " or i.isalpha()== True:
-                   return True
-               else:
-                   return False
-           
+    #def check_name(self,name):
+     #  name = name.get()
+      # if name[0].isalpha()!=True:
+       #    return False
+       #else :
+         #  for i in name :
+          #     if i == " " or i.isalpha()== True:
+           #        return True
+            #   else:
+             #      return False
+    def check_name(self, name_entry):
+        name = name_entry.get().strip()
+        if not name[0].isalpha():
+            return False
+        parts = name.split(" ")
+        *name_parts, last_part = parts
+        if not name_parts:
+            name_parts = []
+            last = last_part
+        else:
+            last = last_part
+        for part in name_parts:
+            if not part.isalpha():
+                return False
+        if not (last.isalpha() or last.isnumeric()):
+            return False
+        return True
 
 
     def checkpassword(self,mytuple):
@@ -706,28 +722,41 @@ class function:
 
 #**************************************************Category Functions****************************************************
             
-    def Categories_add(self,Cattuple):
+    def Categories_add(self, Cattuple):
         con = sqlite3.connect(database=r"Billing_System.db")
         cur = con.cursor()
         try:
-                if Cattuple[1].get() =="":
-                    messagebox.showerror("Error", "category Nmae should  be required" , parent = Cattuple[0])
+            if Cattuple[1].get() == "":
+                messagebox.showerror("Error", "category Nmae should  be required", parent=Cattuple[0])
+            else:
+                cur.execute("select * from category where name = ?", (Cattuple[1].get(),))
+                row = cur.fetchone()
+                if (row != None):
+                    messagebox.showerror("Error", "This category already present , try diffrent", parent=Cattuple[0])
                 else:
-                    cur.execute("select * from category where name = ?",(Cattuple[1].get(),))
-                    row = cur.fetchone() 
-                    if (row!= None):
-                        messagebox.showerror("Error" , "This category already present , try diffrent", parent = Cattuple[0])
+                    # Find largest existing ID
+                    cur.execute("SELECT MAX(Cid) FROM category")
+                    max_id = cur.fetchone()[0]
+
+                    # Start from 101 if no ID exists
+                    if max_id is None or max_id < 101:
+                        new_id = 101
                     else:
-                        cur.execute("insert into category(name) values(?)",(
-                            Cattuple[1].get(),           
-                        ))
-                        con.commit()
-                        messagebox.showinfo("success" , "category added sucessfully",parent = Cattuple[0])
-                        self.Categories_show(Cattuple[2],Cattuple[0])
-                        self.Categories_clear(Cattuple)
+                        new_id = max_id + 1
+
+                    # Insert with generated ID
+                    cur.execute("insert into category(Cid, name) values(?, ?)", (
+                        new_id,
+                        Cattuple[1].get(),
+                    ))
+                    con.commit()
+                    messagebox.showinfo("success", "category added sucessfully", parent=Cattuple[0])
+                    self.Categories_show(Cattuple[2], Cattuple[0])
+                    self.Categories_clear(Cattuple)
 
         except Exception as ex:
-            messagebox.showerror("Error", f"Error due to {str(ex)}",parent = Cattuple[0])
+            messagebox.showerror("Error", f"Error due to {str(ex)}", parent=Cattuple[0])
+
 
 
     def Categories_show(self,category_table,root):
@@ -1104,12 +1133,14 @@ class function:
         try:
             if Bill_TUple[1].get() == "":
                 messagebox.showerror("Error","Please Enter Quantity")
+            elif str(Bill_TUple[1].get()) == "0":
+                messagebox.showinfo("Info","Please enter a valid Quantity")
             elif self.checkquantity(Bill_TUple[1])==True:
                     messagebox.showerror("Error", "Quantity should be numeric please dont use special caracters and strings")
             elif Bill_TUple[2].get()=="":
                 messagebox.showerror("Error","Please select the product From List")
             elif int(Bill_TUple[1].get())>int(self.stock_lbl_frametreaview2):
-                messagebox.showerror("Error","Invalid Quantity ,Quantity must be less than Stock of the product")
+                messagebox.showinfo("Stock not Available",f"The requesteed quantity is unavailable \n currently we have only {self.stock_lbl_frametreaview2} products in stock")
             else:
                 
                 
@@ -1148,7 +1179,7 @@ class function:
             Bill_TUple2[2].delete(*Bill_TUple2[2].get_children())
             for row in Bill_TUple2[1]:
                 Bill_TUple2[2].insert('',END,values=row)
-            Bill_TUple2[3].config(text=f"Cart \t \t\t\tTotal Products\t[{str(len(Bill_TUple2[1]))}]")
+            Bill_TUple2[3].config(text=f"Total Products [{str(len(Bill_TUple2[1]))}]")
         except Exception as ex:
             messagebox.showerror("Error", f"Error due to {str(ex)}",parent = Bill_TUple2[0])
 
@@ -1158,7 +1189,8 @@ class function:
         for row in Bill_update[0]:
             self.bill_amount = self.bill_amount+ int(row[2])*int(row[3])
         if Bill_update[1].get()=="" or Bill_update[1].get()==0:
-            self.net_pay= self.bill_amount-(self.bill_amount*100)/100
+            self.net_pay= float(self.bill_amount)
+            
         else:
             self.net_pay= self.bill_amount-(self.bill_amount*int(Bill_update[1].get()))/100
             self.total_discount = self.bill_amount*int(Bill_update[1].get())/100

@@ -14,10 +14,10 @@ class page2:
         self.root = root
         self.root.title("Inventory Management System")
         self.root.geometry("1335x615+200+135")
-        self.root.minsize(1000, 600)
         self.root.configure(bg="#f0f0f0")
         self.root.state('zoomed')
-        root.overrideredirect(True)
+        self.root.minsize(1000, 600)
+        self.root.overrideredirect(True)
         self.f = Functions.function()
         
         self.lbl = None
@@ -42,37 +42,51 @@ class page2:
         self.create_table()
         
         self.generateeId()
+        self.create_navbar()
         self.show_data(self.frameTreaview)
+
+    def create_navbar(self):
+        navbar = Frame(self.root, bg="#222", height=55)
+        navbar.pack(fill=X)
+        btn_config = [
+            ("Home", self.root.destroy),
+            ("Product Category", self.category),
+            ("Suplier",self.suplyre),
+            ("Product", self.product),
+            ("Billing", self.Bill_Area),
+            ("Sales", self.Sales),
+        ]
+        for name, cmd in btn_config:
+            Button(navbar, text=name, bg="#333", fg="white", font=("Arial", 12, "bold"),
+                   bd=0, cursor="hand2", activebackground="#555", activeforeground="white",
+                   command=cmd).pack(side=LEFT, padx=15, pady=8)
 
     def create_search_frame(self):
         self.frame = LabelFrame(self.root, text="Search Employee", font=("times new roman", 20, "bold"), bd=3, bg="#e6e6e6")
-        self.frame.place(relx=0.05, rely=0.02, relwidth=0.9, relheight=0.12)
-        
+        self.frame.place(relx=0.05, rely=0.06, relwidth=0.9, relheight=0.13)
+
         self.searchby = ttk.Combobox(self.frame, values=("Select", "Email", "name", "contact"), state="readonly", justify=CENTER, font=("arial", 15, "bold"))
-        self.searchby.place(relx=0.02, rely=0.25, relwidth=0.2)
+        self.searchby.place(relx=0.07, rely=0.25, relwidth=0.2)
         self.searchby.current(0)
         
         self.search1 = ttk.Entry(self.frame, font=("arial", 15, "bold"))
-        self.search1.place(relx=0.3, rely=0.25, relwidth=0.4)
+        self.search1.place(relx=0.35, rely=0.25, relwidth=0.4)
         
         btn_Search = Button(self.frame, text="Search", command=self.Search_data, bg="#4caf50", fg="white", font=("times new roman", 20, "bold"), cursor="hand2", relief=RAISED)
-        btn_Search.place(relx=0.75, rely=0.1, relwidth=0.1, relheight=0.8)
-
-        btn_Back = Button(self.frame, text="Back", command=self.root.destroy, bg="#609d8b", fg="white", font=("times new roman", 20, "bold"), cursor="hand2", relief=RAISED)
-        btn_Back.place(relx=0.86, rely=0.1, relwidth=0.1, relheight=0.8)
+        btn_Search.place(relx=0.82, rely=0.1, relwidth=0.1, relheight=0.8)
 
     
     def create_employee_details_frame(self):
         self.frame2 = Label(self.root, text="Employee Details", font=("times new roman", 20, "bold"), bg="#333", fg="white")
-        self.frame2.place(relx=0.03, rely=0.16, relwidth=0.94, relheight=0.05)
+        self.frame2.place(relx=0.03, rely=0.20, relwidth=0.94, relheight=0.05)
     
     def create_employee_form(self):
         labels = ["Emp No.", "Name", "Email", "Gender", "Contact No.", "D.O.B.", "D.O.J.", "Password", "User Type", "Address", "Salary"]
         positions = [
-            (0.0001, 0.23), (0.0001, 0.35), (0.0001, 0.47),
-            (0.33, 0.23), (0.66, 0.23),
-            (0.33, 0.35), (0.66, 0.35),
-            (0.332, 0.47), (0.66, 0.47),
+            (0.0001, 0.26), (0.0001, 0.38), (0.0001, 0.49),
+            (0.33, 0.26), (0.66, 0.26),
+            (0.33, 0.38), (0.66, 0.38),
+            (0.332, 0.49), (0.66, 0.49),
             (0.0001, 0.59), (0.33, 0.59)
         ]
         
@@ -154,6 +168,36 @@ class page2:
     def Update_data(self): self.f.update(self.data_tuple)
     def Delete(self): self.f.delete(self.data_tuple)
     def Search_data(self): self.f.search((self.root, self.search1, self.searchby, self.frameTreaview))
+
+    def suplyre(self):
+        from suplyre import SupplyreClass
+        new_root = Tk()
+        self.new_obj = SupplyreClass(new_root)
+        self.root.destroy()
+ 
+    def category(self):
+        from Category import Categorie
+        new_root = Tk()
+        self.new_obj = Categorie(new_root)
+        self.root.destroy()
+        
+    def Sales(self):
+        from Sales import Sales
+        new_root = Tk()
+        self.new_obj = Sales(new_root)
+        self.root.destroy()
+        
+    def product(self):
+        from product import product
+        new_root = Tk()
+        self.new_obj = product(new_root)
+        self.root.destroy()
+
+    def Bill_Area(self):
+        new_root = Tk()
+        from Main_billsection import Billing_area
+        self.new_obj = Billing_area(new_root)
+        self.root.destroy()
 
     def Show_caleder_dob(self, event=None): 
         if not self.lbl or not self.lbl.winfo_exists():

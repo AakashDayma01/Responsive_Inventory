@@ -15,6 +15,8 @@ class page1:
         self.root = root
         self.root.title("Inventory Management System")
         self.root.state('zoomed')
+        self.root.minsize(1000, 600)
+        self.root.resizable(False,False)
         self.page_window = None
         self.page1_window = None
         self.page2_window = None
@@ -35,9 +37,13 @@ class page1:
         Button(top_frame, text="Logout", bg="skyblue", font=("times new roman", 20, "bold"), cursor="hand2").pack(side=RIGHT, padx=10)
         Button(top_frame, text="Close", fg="black", bg="#FFA07A", font=("times new roman", 20, "bold"), cursor="hand2", command=self.Close).pack(side=RIGHT, padx=10)
 
-        self.tittlt2 = Label(self.root, text="Welcome to Inventory Management System", font=("times new roman", 20, "bold"), bg="black", fg="white")
-        self.tittlt2.pack(fill=X)
-        
+        top_frame2 = Frame(self.root, bg="black")
+        top_frame2.pack(fill=X,pady=5)
+        Label(top_frame2, text="Welcome to Inventory Management System", font=("times new roman", 20, "bold"), bg="black", fg="white").pack(side=LEFT,fill=X)
+        self.month= Label(top_frame2,text=f"Date {str(time.strftime('%d/%m/%y'))}\t",font=("times new roman", 20, "bold"), bg="black", fg="white")
+        self.month.pack(side=RIGHT,padx=10)
+        self.time=Label(top_frame2,text=f"Time ",font=("times new roman", 20, "bold"), bg="black", fg="white")
+        self.time.pack(side=RIGHT,padx=10)
         # Side Frame
         side_frame = Frame(self.root, bg="white", bd=2, relief=RIDGE)
         side_frame.pack(side=LEFT, fill=Y)
@@ -89,7 +95,8 @@ class page1:
         con = sqlite3.connect(database=r"Billing_System.db")
         cur = con.cursor()
         self.current_time = time.strftime('%H:%M:%S') 
-        self.tittlt2.config(text=f"Welcome to Inventory Management System \t\t\t   Date {str(time.strftime('%d/%m/%y'))}  \t\t\t  Time {str(self.current_time)}")
+        self.month.config(text=f"Date {str(time.strftime('%d/%m/%y'))}\t")
+        self.time.config(text=f"Time {str(self.current_time)}\t")
         total_sales = len(os.listdir('Bills'))
         self.Total_sales_lbl.config(text=f"Total Sales\n[{total_sales}]")
         cur.execute("select * from Employee")
@@ -104,7 +111,7 @@ class page1:
         cur.execute("select * from category")
         Total_Category = cur.fetchall()
         self.Total_Categories.config(text=f"Total Categories\n[{str(len(Total_Category))}]")
-        self.tittlt2.after(1000,self.update_time)
+        self.time.after(1000,self.update_time)
 
 
     def close_all_windows(self, current_window):
@@ -114,7 +121,6 @@ class page1:
     def employee2(self):
         if self.page1_window is not None:
             self.page1_window.destroy()
-            time.sleep(1) 
         self.close_all_windows(self.page1_window)
         self.newwindow = Toplevel(self.root)
         self.new_obj = page2(self.newwindow)
@@ -124,7 +130,6 @@ class page1:
     def category(self):
         if self.page2_window is not None:
             self.page2_window.destroy()
-            time.sleep(1)
         self.close_all_windows(self.page2_window)
         self.newwindow = Toplevel(self.root)
         self.new_obj = Categorie(self.newwindow)
@@ -134,7 +139,6 @@ class page1:
     def Sales(self):
         if self.page3_window is not None:
             self.page3_window.destroy()
-            time.sleep(1)
         self.close_all_windows(self.page3_window)
         self.newwindow = Toplevel(self.root)
         self.new_obj = Sales(self.newwindow)
@@ -144,7 +148,6 @@ class page1:
     def Suplier(self):
         if self.page4_window is not None:
             self.page4_window.destroy()
-            time.sleep(1)
         self.close_all_windows(self.page4_window)
         self.newwindow = Toplevel(self.root)
         self.new_obj = SupplyreClass(self.newwindow)
@@ -154,7 +157,6 @@ class page1:
     def product(self):
         if self.page5_window is not None:
             self.page5_window.destroy()
-            time.sleep(1)
         self.close_all_windows(self.page5_window)
         self.newwindow = Toplevel(self.root)
         self.new_obj = product(self.newwindow)
@@ -163,7 +165,6 @@ class page1:
     def Bill_Area(self):
         if self.page6_window is not None:
             self.page6_window.destroy()
-            time.sleep(1)
         self.close_all_windows(self.page6_window)
         self.newwindow = Toplevel(self.root)
         self.new_obj = Billing_area(self.newwindow)

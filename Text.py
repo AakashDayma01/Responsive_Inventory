@@ -1505,48 +1505,292 @@ if __name__ == "__main__":
 
 
 import tkinter as tk
+from tkinter import *
 from tkinter import ttk
+import sqlite3
+from tkinter import messagebox
+import Functions
 
-class InventoryBillingSystem:
+class Billing_area:
     def __init__(self, root):
         self.root = root
         self.root.title("Inventory Management System")
-        self.root.geometry("1200x600")
-        self.root.minsize(1000, 500)
+        self.root.geometry("1200x650")
+        self.root.minsize(800, 600)
+        self.f = Functions.function()
+        self.root.wm_attributes("-topmost", True)
+        self.root.focus_force()
+        self.cart_list = []
+        self.pid = StringVar()
+        self.file_print = 0
 
-        # Make 3 columns equally stretchable
+        self.root.grid_rowconfigure(1, weight=1)
         for i in range(3):
             self.root.grid_columnconfigure(i, weight=1, uniform='equal')
-        self.root.grid_rowconfigure(0, weight=1)
 
+        self.create_navbar()
         self.create_left_frame()
         self.create_middle_frame()
         self.create_right_frame()
 
+    def create_navbar(self):
+        navbar = tk.Frame(self.root, bg="#333", height=50)
+        navbar.grid(row=0, column=0, columnspan=3, sticky="nsew")
+        for i in range(5):
+            navbar.grid_columnconfigure(i, weight=1)
+
+        nav_buttons = ["Home", "Products", "Cart", "Billing", "Logout"]
+        for i, btn in enumerate(nav_buttons):
+            tk.Button(navbar, text=btn, bg="#555", fg="white",
+                      font=("times new roman", 12, "bold"), bd=0).grid(row=0, column=i, sticky="nsew", padx=1, pady=1)
+
     def create_left_frame(self):
         self.left_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE)
-        self.left_frame.grid(row=0, column=0, sticky="nsew")
-        self.left_frame.grid_rowconfigure(2, weight=1)
+        self.left_frame.grid(row=1, column=0, sticky="nsew")
+        self.left_frame.grid_rowconfigure(1, weight=1)
         self.left_frame.grid_columnconfigure(0, weight=1)
 
-        tk.Label(self.left_frame, text="All products", font=("times new roman", 22, "bold"), fg="white", bg="#000066").pack(fill="x")
+        header = tk.Label(self.left_frame, text="All Products", font=("times new roman", 30, "bold"),
+                          fg="white", bg="#000066")
+        header.pack(fill="x")
 
         search_frame = tk.Frame(self.left_frame, bd=2, relief=tk.RIDGE)
-        search_frame.pack(fill="x", padx=5, pady=5)
+        search_frame.pack(fill="x", padx=3, pady=10)
 
-        search_frame.grid_columnconfigure(0, weight=1)
-        search_frame.grid_columnconfigure(1, weight=1)
-        search_frame.grid_columnconfigure(2, weight=1)
+        for i in range(3):
+            search_frame.grid_columnconfigure(i, weight=1)
 
-        tk.Label(search_frame, text="Search Product | By Name", font=("times new roman", 18, "bold"), fg="red").grid(row=0, column=0, sticky="w", padx=5, pady=2)
-        tk.Button(search_frame, text="Search All", font=("times new roman", 15, "bold"), bg="#d6eaf8").grid(row=0, column=1, columnspan=2, sticky="e", padx=5)
+        tk.Label(search_frame, text="Search Product | By Name", font=("times new roman", 18, "bold"), fg="red", width=35, anchor="w", padx=2, pady=5).grid(row=0, column=0, columnspan=2, sticky="w", pady=5)
+        tk.Button(search_frame, text="Search All", font=("times new roman", 15, "bold"), width=17, padx=2, pady=2, bg="#d6eaf8", command=self.Billsecton_search_all).grid(row=0, column=2, sticky="e", padx=5, pady=5)
 
-        tk.Label(search_frame, text="Product Name", font=("times new roman", 17)).grid(row=1, column=0, sticky="w", padx=5, pady=5)
-        tk.Entry(search_frame, font=("times new roman", 15), bg="lightyellow").grid(row=1, column=1, sticky="ew", padx=5)
-        tk.Button(search_frame, text="Search", font=("times new roman", 12, "bold"), bg="#aed6f1").grid(row=1, column=2, sticky="e", padx=5)
+        tk.Label(search_frame, text="Product Name", font=("times new roman", 17), width=16, anchor="w").grid(row=1, column=0, sticky="w", padx=2, pady=5)
+        self.Search_Name_Entry = tk.Entry(search_frame, font=("times new roman", 15), bg="lightyellow")
+        self.Search_Name_Entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+        tk.Button(search_frame, text="Search", font=("times new roman", 15, "bold"), bg="#aed6f1", command=self.Billsection_search).grid(row=1, column=2, sticky="ew", padx=5, pady=5)
 
         product_frame = tk.Frame(self.left_frame)
-        product_frame.pack(fill="both", expand=True)
+        product_frame.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.product_table = ttk.Treeview(product_frame, columns=("pid", "name", "price", "qty", "status"), show="headings")
+        for col in self.product_table["columns"]:
+            self.product_table.heading(col, text=col.upper())
+        self.product_table.pack(fill="both", expand=True)
+        self.product_table.bind('<ButtonRelease-1>', self.Billsection_get_data)  # Bind the selection event
+
+    def create_middle_frame(self):
+        self.middle_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE, bg="#dcdcdc")
+        self.middle_frame.grid(row=1, column=1, sticky="nsew")
+        self.middle_frame.grid_rowconfigure(1, weight=1)
+        self.middle_frame.grid_columnconfigure(0, weight=1)
+
+        tk.Label(self.middle_frame, text="Customer Detail", font=("times new roman", 27, "bold"), bg="#c0c0c0").pack(fill="x")
+
+        top_form = tk.Frame(self.middle_frame, bg="#dcdcdc")
+        top_form.pack(fill="x", padx=10, pady=5)
+
+        for i in range(4):
+            top_form.grid_columnconfigure(i, weight=1)
+
+        tk.Label(top_form, text="Name", font=("times new roman", 15), bg="#dcdcdc", width=11).grid(row=0, column=0, sticky="w", padx=1, pady=5)
+        self.Custumer_Name_E = tk.Entry(top_form, font=("times new roman", 15), bg="lightyellow")
+        self.Custumer_Name_E.grid(row=0, column=1, sticky="ew", padx=3, pady=5)
+
+        tk.Label(top_form, text="Contact", font=("times new roman", 15), bg="#dcdcdc", width=12).grid(row=0, column=2, sticky="w", padx=3, pady=5)
+        self.Custumer_contact_E = tk.Entry(top_form, font=("times new roman", 15), bg="lightyellow")
+        self.Custumer_contact_E.grid(row=0, column=3, sticky="ew", padx=3, pady=5)
+        
+        self.cart = Label(self.middle_frame, text="Cart \tTotal Products\t[0]", font=("times new roman", 14, "bold"), bg="#dcdcdc",fg="black" ,justify="left")
+        self.cart.pack(anchor="w", padx=10, pady=3)
+
+        cart_frame = tk.Frame(self.middle_frame)
+        cart_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        self.cart_table = ttk.Treeview(cart_frame, columns=("pid", "name", "price", "qty"), show="headings")
+        for col in self.cart_table["columns"]:
+            self.cart_table.heading(col, text=col.upper())
+        self.cart_table.pack(fill="both", expand=True)
+        self.cart_table.bind("<ButtonRelease-1>", self.get_cart_data)
+
+        entry_frame = tk.Frame(self.middle_frame, bg="#dcdcdc")
+        entry_frame.pack(fill="x", padx=10, pady=10)
+
+        for i in range(6):
+            entry_frame.grid_columnconfigure(i, weight=1)
+
+        tk.Label(entry_frame, text="Product Name", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=0, sticky="w", padx=5, pady=3)
+        self.p_name_Entry = ttk.Entry(entry_frame,state="readonly", font=("times new roman", 18))
+        self.p_name_Entry.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
+
+        tk.Label(entry_frame, text="Price per Qty", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=2, sticky="w", padx=5, pady=3)
+        self.price_perqty_Entry = ttk.Entry(entry_frame, font=("times new roman", 18),state="readonly")
+        self.price_perqty_Entry.grid(row=1, column=2, sticky="ew", padx=5, pady=5)
+
+        tk.Label(entry_frame, text="Quantity", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=4, sticky="w", padx=5, pady=3)
+        self.Quantity_Entry = tk.Entry(entry_frame, font=("times new roman", 18), bg="lightyellow")
+        self.Quantity_Entry.grid(row=1, column=4, sticky="ew", padx=5, pady=5)
+
+        button_frame = tk.Frame(self.middle_frame, bg="#dcdcdc")
+        button_frame.pack(fill="x", padx=10, pady=5)
+
+        self.Instock_label = tk.Label(button_frame, text="In Stock[0]", font=("times new roman", 18), bg="#dcdcdc", anchor="w")
+        self.Instock_label.pack(side="left", padx=5, pady=5)
+        tk.Button(button_frame, text="Clear", font=("times new roman", 16), bg="lightgray", padx=10, command=self.clear_cart).pack(side="left", padx=5, pady=5)
+        tk.Button(button_frame, text="Add|Update Cart", font=("times new roman", 15, "bold"), padx=5, bg="orange", width=25, command=self.Add_update_Cart).pack(side="left", padx=5, pady=5)
+
+    def create_right_frame(self):
+        self.right_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE)
+        self.right_frame.grid(row=1, column=2, sticky="nsew")
+        self.right_frame.grid_rowconfigure(1, weight=1)
+        self.right_frame.grid_columnconfigure(0, weight=1)
+
+        tk.Label(self.right_frame, text="Customer Billing Area", font=("times new roman", 27, "bold"), bg="orange").pack(fill="x")
+
+        self.bill_area = tk.Text(self.right_frame, wrap="word", bg="#d3d3d3", font=("times new roman", 11))
+        self.bill_area.pack(fill="both", expand=True, padx=10, pady=5)
+
+        billing_info = tk.Frame(self.right_frame)
+        billing_info.pack(fill="x", padx=10, pady=5)
+
+        for i in range(3):
+            billing_info.grid_columnconfigure(i, weight=1)
+
+        self.Bill_amount_label = tk.Label(billing_info, text="Bill Amount\n[0]", font=("times new roman", 15, "bold"), bg="blue", fg="white")
+        self.Bill_amount_label.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+
+        discount_frame = tk.Frame(billing_info, bg="orange")
+        discount_frame.grid(row=0, column=1, sticky="nsew", padx=2, pady=2)
+        tk.Label(discount_frame, text="Discount %", font=("times new roman", 15, "bold"), bg="orange", fg="white").pack(anchor="center")
+        self.Discount_Entry = tk.Entry(discount_frame, font=("times new roman", 12), width=8)
+        self.Discount_Entry.pack(anchor="center", padx=5, pady=2)
+
+        self.Bill_netpay_label = tk.Label(billing_info, text="Net Pay\n[0]", font=("times new roman", 15, "bold"), bg="blue", fg="white")
+        self.Bill_netpay_label.grid(row=0, column=2, sticky="nsew", padx=2, pady=2)
+
+        tk.Button(billing_info, text="Print", font=("times new roman", 15), bg="white", command=self.Print_File).grid(row=1, column=0, sticky="nsew", padx=2, pady=2)
+        tk.Button(billing_info, text="Clear All", font=("times new roman", 15), bg="lightblue", command=self.clear_all).grid(row=1, column=1, sticky="nsew", padx=2, pady=2)
+        tk.Button(billing_info, text="Generate\nSave Bill", font=("times new roman", 15), bg="pink", command=self.generate_bill).grid(row=1, column=2, sticky="nsew", padx=2, pady=2)
+
+        self.Billsection_show()
+
+    # Function mappings
+    def Billsection_show(self):
+        self.f.Billsection_show(self.product_table)
+
+    def Billsection_search(self):
+        self.f.Billsection_search((self.root, self.Search_Name_Entry, self.product_table))
+
+    def Billsecton_search_all(self):
+        self.f.Billsecton_search_all(self.product_table, (self.root,))
+
+    def Billsection_get_data(self, event=None):
+        self.f.Billsection_get_data((self.root, self.price_perqty_Entry, self.p_name_Entry, self.Instock_label, self.pid, self.product_table))
+
+    def Add_update_Cart(self):
+        self.f.Add_updateCart((self.root, self.Quantity_Entry, self.p_name_Entry, self.price_perqty_Entry, self.pid, self.cart_list,
+                               self.Discount_Entry, self.cart_table, self.cart, self.Bill_netpay_label, self.Bill_amount_label))
+
+    def generate_bill(self):
+        self.f.generate_bill((self.Custumer_Name_E, self.Custumer_contact_E, self.cart_list, self.Discount_Entry,
+                              self.Bill_netpay_label, self.Bill_amount_label, self.bill_area, self.product_table, self.root))
+
+    def clear_cart(self):
+        self.f.clear_cart((self.price_perqty_Entry, self.p_name_Entry, self.pid, self.Quantity_Entry,
+                           self.Instock_label, self.Bill_amount_label, self.Bill_netpay_label, self.Discount_Entry))
+
+    def clear_all(self):
+        self.f.clear_all(
+            (self.price_perqty_Entry, self.p_name_Entry, self.pid, self.Quantity_Entry,
+             self.Instock_label, self.Bill_amount_label, self.Bill_netpay_label, self.Discount_Entry),
+            (self.root, self.cart_list, self.cart_table, self.cart, self.bill_area, self.Custumer_Name_E, self.Custumer_contact_E)
+        )
+        
+
+    def Print_File(self):
+        self.f.print_file(self.bill_area)
+
+    def get_cart_data(self, event=None):
+        mytuple = (self.root, self.cart_table, self.price_perqty_Entry, self.p_name_Entry, self.pid, self.Instock_label)
+        self.f.get_cart_data(mytuple)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = Billing_area(root)
+    root.mainloop()
+
+
+
+
+    import tkinter as tk
+from tkinter import *
+from tkinter import ttk
+import mysql.connector
+from tkinter import messagebox
+import string
+import sqlite3
+import time
+import os
+import tempfile
+import Functions
+
+class Billing_area:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Inventory Management System")
+        self.root.geometry("1200x650")
+        self.root.minsize(800, 600)
+        self.f = Functions.function()
+        #root.overrideredirect(True)
+        self.root.wm_attributes("-topmost",True)
+        self.root.focus_force()
+        self.cart_list = []
+        self.pid = StringVar()
+        self.file_print = 0
+
+        self.root.grid_rowconfigure(1, weight=1)
+        for i in range(3):
+            self.root.grid_columnconfigure(i, weight=1, uniform='equal')
+
+        self.create_navbar()
+        self.create_left_frame()
+        self.create_middle_frame()
+        self.create_right_frame()
+
+    def create_navbar(self):
+        navbar = tk.Frame(self.root, bg="#333", height=50)
+        navbar.grid(row=0, column=0, columnspan=3, sticky="nsew")
+        for i in range(5):
+            navbar.grid_columnconfigure(i, weight=1)
+
+        nav_buttons = ["Home", "Products", "Cart", "Billing", "Logout"]
+        for i, btn in enumerate(nav_buttons):
+            tk.Button(navbar, text=btn, bg="#555", fg="white",
+                      font=("times new roman", 12, "bold"), bd=0).grid(row=0, column=i, sticky="nsew", padx=1, pady=1)
+
+    def create_left_frame(self):
+        self.left_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE)
+        self.left_frame.grid(row=1, column=0, sticky="nsew")
+        self.left_frame.grid_rowconfigure(1, weight=1)
+        self.left_frame.grid_columnconfigure(0, weight=1)
+
+        header = tk.Label(self.left_frame, text="All Products", font=("times new roman", 30, "bold"),
+                 fg="white", bg="#000066")
+        header.pack(fill="x")
+
+        search_frame = tk.Frame(self.left_frame, bd=2, relief=tk.RIDGE)
+        search_frame.pack(fill="x",padx=3, pady=10)
+
+        for i in range(3):
+            search_frame.grid_columnconfigure(i, weight=1)
+
+        tk.Label(search_frame, text="Search Product | By Name", font=("times new roman", 18, "bold"), fg="red",width=35,anchor="w",padx=2,pady=5).grid(row=0, column=0,columnspan=2 ,sticky="w", pady=5)
+        tk.Button(search_frame, text="Search All", font=("times new roman", 15, "bold" ),width=17,padx=2,pady=2,  bg="#d6eaf8").grid(row=0, column=2, sticky="e", padx=5, pady=5)
+
+        tk.Label(search_frame, text="Product Name", font=("times new roman", 17),width=16,anchor="w").grid(row=1, column=0, sticky="w", padx=2, pady=5)
+        tk.Entry(search_frame, font=("times new roman", 15), bg="lightyellow",).grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+        tk.Button(search_frame, text="Search", font=("times new roman", 15, "bold"),bg="#aed6f1").grid(row=1, column=2, sticky="ew", padx=5, pady=5)
+
+        product_frame = tk.Frame(self.left_frame)
+        product_frame.pack(fill="both", expand=True, padx=5, pady=5)
 
         self.product_table = ttk.Treeview(product_frame, columns=("pid", "name", "price", "qty", "status"), show="headings")
         for col in self.product_table["columns"]:
@@ -1555,11 +1799,11 @@ class InventoryBillingSystem:
 
     def create_middle_frame(self):
         self.middle_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE, bg="#dcdcdc")
-        self.middle_frame.grid(row=0, column=1, sticky="nsew")
+        self.middle_frame.grid(row=1, column=1, sticky="nsew")
         self.middle_frame.grid_rowconfigure(1, weight=1)
         self.middle_frame.grid_columnconfigure(0, weight=1)
 
-        tk.Label(self.middle_frame, text="Customer Detail", font=("times new roman", 20, "bold"), bg="#c0c0c0").pack(fill="x")
+        tk.Label(self.middle_frame, text="Customer Detail", font=("times new roman", 27, "bold"), bg="#c0c0c0").pack(fill="x")
 
         top_form = tk.Frame(self.middle_frame, bg="#dcdcdc")
         top_form.pack(fill="x", padx=10, pady=5)
@@ -1567,16 +1811,16 @@ class InventoryBillingSystem:
         for i in range(4):
             top_form.grid_columnconfigure(i, weight=1)
 
-        tk.Label(top_form, text="Customer Name", font=("times new roman", 12), bg="#dcdcdc").grid(row=0, column=0, padx=0, pady=5, sticky="w")
-        tk.Entry(top_form, font=("times new roman", 12), bg="lightyellow").grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        tk.Label(top_form, text="Name", font=("times new roman", 15), bg="#dcdcdc",width=11).grid(row=0, column=0, sticky="w", padx=1, pady=5)
+        tk.Entry(top_form, font=("times new roman", 15), bg="lightyellow").grid(row=0, column=1, sticky="ew", padx=3, pady=5)
 
-        tk.Label(top_form, text="Mobile No.", font=("times new roman", 12), bg="#dcdcdc").grid(row=0, column=2, padx=5, pady=5, sticky="w")
-        tk.Entry(top_form, font=("times new roman", 12), bg="lightyellow").grid(row=0, column=3, padx=5, pady=5, sticky="ew")
+        tk.Label(top_form, text="Contact", font=("times new roman", 15), bg="#dcdcdc" ,width=12).grid(row=0, column=2, sticky="w", padx=3, pady=5)
+        tk.Entry(top_form, font=("times new roman", 15), bg="lightyellow").grid(row=0, column=3, sticky="ew", padx=3, pady=5)
 
-        tk.Label(self.middle_frame, text="Cart", font=("times new roman", 14, "bold"), bg="#dcdcdc").pack(anchor="w", padx=10, pady=5)
+        tk.Label(self.middle_frame, text="Cart", font=("times new roman", 14, "bold"), bg="#dcdcdc").pack(anchor="w", padx=10, pady=3)
 
         cart_frame = tk.Frame(self.middle_frame)
-        cart_frame.pack(fill="both", expand=True)
+        cart_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
         self.cart_table = ttk.Treeview(cart_frame, columns=("pid", "name", "price", "qty"), show="headings")
         for col in self.cart_table["columns"]:
@@ -1584,56 +1828,888 @@ class InventoryBillingSystem:
         self.cart_table.pack(fill="both", expand=True)
 
         entry_frame = tk.Frame(self.middle_frame, bg="#dcdcdc")
-        entry_frame.pack(fill="x", pady=10)
+        entry_frame.pack(fill="x", padx=10, pady=10)
 
-        for i in range(8):
+        for i in range(6):
             entry_frame.grid_columnconfigure(i, weight=1)
 
-        tk.Label(entry_frame, text="Product Name", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, padx=5, pady=5,column=0, sticky="w")
-        tk.Entry(entry_frame, font=("times new roman", 15), bg="lightyellow").grid(row=1, column=0, padx=0, pady=5, sticky="ew")
+        tk.Label(entry_frame, text="Product Name", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=0, sticky="w", padx=5, pady=3)
+        tk.Entry(entry_frame, font=("times new roman", 18), bg="lightyellow").grid(row=1, column=0, sticky="ew", padx=5, pady=5)
 
-        tk.Label(entry_frame, text="Price per Qty", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=2, padx=5, pady=5, sticky="w")
-        tk.Entry(entry_frame, font=("times new roman", 15)).grid(row=1, column=2, padx=5, pady=5, sticky="ew")
+        tk.Label(entry_frame, text="Price per Qty", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=2, sticky="w", padx=5, pady=3)
+        tk.Entry(entry_frame, font=("times new roman", 18)).grid(row=1, column=2, sticky="ew", padx=5, pady=5)
 
-        tk.Label(entry_frame, text="Quantity", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=3, padx=5, pady=5, sticky="w")
-        tk.Entry(entry_frame, font=("times new roman", 15), bg="lightyellow").grid(row=1, column=3, padx=5, pady=5, sticky="ew")
-
-        tk.Label(entry_frame, text="In Stock[0]", font=("times new roman", 12), bg="#dcdcdc").grid(row=3, column=0, padx=5, pady=5, sticky="w")
+        tk.Label(entry_frame, text="Quantity", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=4, sticky="w", padx=5, pady=3)
+        tk.Entry(entry_frame, font=("times new roman", 18), bg="lightyellow").grid(row=1, column=4, sticky="ew", padx=5, pady=5)
 
         button_frame = tk.Frame(self.middle_frame, bg="#dcdcdc")
-        button_frame.pack(fill="x", padx=10)
+        button_frame.pack(fill="x", padx=10, pady=5)
 
-        tk.Button(button_frame, text="Clear", font=("times new roman", 11), bg="lightgray", width=10).pack(side="left", padx=5)
-        tk.Button(button_frame, text="Add|Update Cart", font=("times new roman", 11, "bold"), bg="orange", width=20).pack(side="left", padx=5)
+        tk.Label(button_frame, text="In Stock[0]", font=("times new roman", 18), bg="#dcdcdc",anchor="w").pack(side="left", padx=5, pady=5)
+        tk.Button(button_frame, text="Clear", font=("times new roman", 16), bg="lightgray",padx=10).pack(side="left", padx=5, pady=5)
+        tk.Button(button_frame, text="Add|Update Cart", font=("times new roman", 15, "bold"), padx=5, bg="orange", width=25).pack(side="left", padx=5, pady=5)
 
     def create_right_frame(self):
         self.right_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE)
-        self.right_frame.grid(row=0, column=2, sticky="nsew")
+        self.right_frame.grid(row=1, column=2, sticky="nsew")
         self.right_frame.grid_rowconfigure(1, weight=1)
         self.right_frame.grid_columnconfigure(0, weight=1)
 
-        tk.Label(self.right_frame, text="Customer Billing Area", font=("times new roman", 20, "bold"), bg="orange").pack(fill="x")
+        tk.Label(self.right_frame, text="Customer Billing Area", font=("times new roman", 27, "bold"), bg="orange").pack(fill="x")
 
         self.bill_area = tk.Text(self.right_frame, wrap="word", bg="#d3d3d3", font=("times new roman", 11))
-        self.bill_area.pack(fill="both", expand=True)
+        self.bill_area.pack(fill="both", expand=True, padx=10, pady=5)
 
         billing_info = tk.Frame(self.right_frame)
-        billing_info.pack(fill="x")
+        billing_info.pack(fill="x", padx=10, pady=5)
 
         for i in range(3):
             billing_info.grid_columnconfigure(i, weight=1)
 
-        tk.Label(billing_info, text="Bill Amount\n[0]", font=("times new roman", 12, "bold"), bg="blue", fg="white").grid(row=0, column=0, sticky="nsew", padx=2)
-        tk.Label(billing_info, text="Discount %\n0", font=("times new roman", 12, "bold"), bg="orange", fg="black").grid(row=0, column=1, sticky="nsew", padx=2)
-        tk.Label(billing_info, text="Net Pay\n[0]", font=("times new roman", 12, "bold"), bg="blue", fg="white").grid(row=0, column=2, sticky="nsew", padx=2)
+        tk.Label(billing_info, text="Bill Amount\n[0]", font=("times new roman", 15, "bold"), bg="blue", fg="white").grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+        discount_frame = tk.Frame(billing_info, bg="orange")
+        discount_frame.grid(row=0, column=1, sticky="nsew", padx=2, pady=2)
+        tk.Label(discount_frame, text="Discount %", font=("times new roman", 15, "bold"), bg="orange",fg="white").pack(anchor="center")
+        self.Discount_Entry = tk.Entry(discount_frame, font=("times new roman", 12), width=8)
+        self.Discount_Entry.pack(anchor="center", padx=5, pady=2)        
+        tk.Label(billing_info, text="Net Pay\n[0]", font=("times new roman", 15, "bold"), bg="blue", fg="white").grid(row=0, column=2, sticky="nsew", padx=2, pady=2)
 
-        tk.Button(billing_info, text="Print", font=("times new roman", 11), bg="white").grid(row=1, column=0, sticky="nsew", padx=2, pady=2)
-        tk.Button(billing_info, text="Clear All", font=("times new roman", 11), bg="lightblue").grid(row=1, column=1, sticky="nsew", padx=2, pady=2)
-        tk.Button(billing_info, text="Generate\nSave Bill", font=("times new roman", 11), bg="pink").grid(row=1, column=2, sticky="nsew", padx=2, pady=2)
+        tk.Button(billing_info, text="Print", font=("times new roman", 15), bg="white").grid(row=1, column=0, sticky="nsew", padx=2, pady=2)
+        tk.Button(billing_info, text="Clear All", font=("times new roman", 15), bg="lightblue").grid(row=1, column=1, sticky="nsew", padx=2, pady=2)
+        tk.Button(billing_info, text="Generate\nSave Bill", font=("times new roman", 15), bg="pink").grid(row=1, column=2, sticky="nsew", padx=2, pady=2)
+        
 
-# Run
 if __name__ == "__main__":
     root = tk.Tk()
-    app = InventoryBillingSystem(root)
+    app = Billing_area(root)
     root.mainloop()
 
+
+
+
+
+#updated correct responsive 
+import tkinter as tk
+from tkinter import *
+from tkinter import ttk
+import sqlite3
+from tkinter import messagebox
+import Functions
+
+class Billing_area:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Inventory Management System")
+        self.root.geometry("1200x650")
+        self.root.minsize(800, 600)
+        self.f = Functions.function()
+        self.root.wm_attributes("-topmost", True)
+        self.root.focus_force()
+        self.cart_list = []
+        self.pid = StringVar()
+        self.file_print = 0
+
+        self.root.grid_rowconfigure(1, weight=1)
+        for i in range(3):
+            self.root.grid_columnconfigure(i, weight=1, uniform='equal')
+
+        self.create_navbar()
+        self.create_left_frame()
+        self.create_middle_frame()
+        self.create_right_frame()
+
+    def create_navbar(self):
+        navbar = tk.Frame(self.root, bg="#333", height=50)
+        navbar.grid(row=0, column=0, columnspan=3, sticky="nsew")
+        for i in range(5):
+            navbar.grid_columnconfigure(i, weight=1)
+
+        nav_buttons = ["Home", "Products", "Cart", "Billing", "Logout"]
+        for i, btn in enumerate(nav_buttons):
+            tk.Button(navbar, text=btn, bg="#555", fg="white",
+                      font=("times new roman", 12, "bold"), bd=0).grid(row=0, column=i, sticky="nsew", padx=1, pady=1)
+
+    def create_left_frame(self):
+        self.left_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE)
+        self.left_frame.grid(row=1, column=0, sticky="nsew")
+        self.left_frame.grid_rowconfigure(1, weight=1)
+        self.left_frame.grid_columnconfigure(0, weight=1)
+
+        header = tk.Label(self.left_frame, text="All Products", font=("times new roman", 30, "bold"),
+                          fg="white", bg="#000066")
+        header.pack(fill="x")
+
+        search_frame = tk.Frame(self.left_frame, bd=2, relief=tk.RIDGE)
+        search_frame.pack(fill="x", padx=3, pady=10)
+
+        for i in range(3):
+            search_frame.grid_columnconfigure(i, weight=1)
+
+        tk.Label(search_frame, text="Search Product | By Name", font=("times new roman", 18, "bold"), fg="red", width=35, anchor="w", padx=2, pady=5).grid(row=0, column=0, columnspan=2, sticky="w", pady=5)
+        tk.Button(search_frame, text="Search All", font=("times new roman", 15, "bold"), width=17, padx=2, pady=2, bg="#d6eaf8", command=self.Billsecton_search_all).grid(row=0, column=2, sticky="e", padx=5, pady=5)
+
+        tk.Label(search_frame, text="Product Name", font=("times new roman", 17), width=16, anchor="w").grid(row=1, column=0, sticky="w", padx=2, pady=5)
+        self.Search_Name_Entry = tk.Entry(search_frame, font=("times new roman", 15), bg="lightyellow")
+        self.Search_Name_Entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+        tk.Button(search_frame, text="Search", font=("times new roman", 15, "bold"), bg="#aed6f1", command=self.Billsection_search).grid(row=1, column=2, sticky="ew", padx=5, pady=5)
+
+        product_frame = tk.Frame(self.left_frame)
+        product_frame.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.product_table = ttk.Treeview(product_frame, columns=("pid", "name", "price", "qty", "status"), show="headings")
+        for col in self.product_table["columns"]:
+            self.product_table.heading(col, text=col.upper())
+        self.product_table.pack(fill="both", expand=True)
+        self.product_table.bind('<ButtonRelease-1>', self.Billsection_get_data)  # Bind the selection event
+
+    def create_middle_frame(self):
+        self.middle_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE, bg="#dcdcdc")
+        self.middle_frame.grid(row=1, column=1, sticky="nsew")
+        self.middle_frame.grid_rowconfigure(1, weight=1)
+        self.middle_frame.grid_columnconfigure(0, weight=1)
+
+        tk.Label(self.middle_frame, text="Customer Detail", font=("times new roman", 27, "bold"), bg="#c0c0c0").pack(fill="x")
+
+        top_form = tk.Frame(self.middle_frame, bg="#dcdcdc")
+        top_form.pack(fill="x", padx=10, pady=5)
+
+        for i in range(4):
+            top_form.grid_columnconfigure(i, weight=1)
+
+        tk.Label(top_form, text="Name", font=("times new roman", 15), bg="#dcdcdc", width=11).grid(row=0, column=0, sticky="w", padx=1, pady=5)
+        self.Custumer_Name_E = tk.Entry(top_form, font=("times new roman", 15), bg="lightyellow")
+        self.Custumer_Name_E.grid(row=0, column=1, sticky="ew", padx=3, pady=5)
+
+        tk.Label(top_form, text="Contact", font=("times new roman", 15), bg="#dcdcdc", width=12).grid(row=0, column=2, sticky="w", padx=3, pady=5)
+        self.Custumer_contact_E = tk.Entry(top_form, font=("times new roman", 15), bg="lightyellow")
+        self.Custumer_contact_E.grid(row=0, column=3, sticky="ew", padx=3, pady=5)
+        
+        self.cart = Label(self.middle_frame, text="Cart \tTotal Products\t[0]", font=("times new roman", 14, "bold"), bg="#dcdcdc",fg="black" ,justify="left")
+        self.cart.pack(anchor="w", padx=10, pady=3)
+
+        cart_frame = tk.Frame(self.middle_frame)
+        cart_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        self.cart_table = ttk.Treeview(cart_frame, columns=("pid", "name", "price", "qty"), show="headings")
+        for col in self.cart_table["columns"]:
+            self.cart_table.heading(col, text=col.upper())
+        self.cart_table.pack(fill="both", expand=True)
+        self.cart_table.bind("<ButtonRelease-1>", self.get_cart_data)
+
+        entry_frame = tk.Frame(self.middle_frame, bg="#dcdcdc")
+        entry_frame.pack(fill="x", padx=10, pady=10)
+
+        for i in range(6):
+            entry_frame.grid_columnconfigure(i, weight=1)
+
+        tk.Label(entry_frame, text="Product Name", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=0, sticky="w", padx=5, pady=3)
+        self.p_name_Entry = ttk.Entry(entry_frame,state="readonly", font=("times new roman", 18))
+        self.p_name_Entry.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
+
+        tk.Label(entry_frame, text="Price per Qty", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=2, sticky="w", padx=5, pady=3)
+        self.price_perqty_Entry = ttk.Entry(entry_frame, font=("times new roman", 18),state="readonly")
+        self.price_perqty_Entry.grid(row=1, column=2, sticky="ew", padx=5, pady=5)
+
+        tk.Label(entry_frame, text="Quantity", font=("times new roman", 15), bg="#dcdcdc").grid(row=0, column=4, sticky="w", padx=5, pady=3)
+        self.Quantity_Entry = tk.Entry(entry_frame, font=("times new roman", 18), bg="lightyellow")
+        self.Quantity_Entry.grid(row=1, column=4, sticky="ew", padx=5, pady=5)
+
+        button_frame = tk.Frame(self.middle_frame, bg="#dcdcdc")
+        button_frame.pack(fill="x", padx=10, pady=5)
+
+        self.Instock_label = tk.Label(button_frame, text="In Stock[0]", font=("times new roman", 18), bg="#dcdcdc", anchor="w")
+        self.Instock_label.pack(side="left", padx=5, pady=5)
+        tk.Button(button_frame, text="Clear", font=("times new roman", 16), bg="lightgray", padx=10, command=self.clear_cart).pack(side="left", padx=5, pady=5)
+        tk.Button(button_frame, text="Add|Update Cart", font=("times new roman", 15, "bold"), padx=5, bg="orange", width=25, command=self.Add_update_Cart).pack(side="left", padx=5, pady=5)
+
+    def create_right_frame(self):
+        self.right_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE)
+        self.right_frame.grid(row=1, column=2, sticky="nsew")
+        self.right_frame.grid_rowconfigure(1, weight=1)
+        self.right_frame.grid_columnconfigure(0, weight=1)
+
+        tk.Label(self.right_frame, text="Customer Billing Area", font=("times new roman", 27, "bold"), bg="orange").pack(fill="x")
+
+        self.bill_area = tk.Text(self.right_frame, wrap="word", bg="#d3d3d3", font=("times new roman", 11))
+        self.bill_area.pack(fill="both", expand=True, padx=10, pady=5)
+
+        billing_info = tk.Frame(self.right_frame)
+        billing_info.pack(fill="x", padx=10, pady=5)
+
+        for i in range(3):
+            billing_info.grid_columnconfigure(i, weight=1)
+
+        self.Bill_amount_label = tk.Label(billing_info, text="Bill Amount\n[0]", font=("times new roman", 15, "bold"), bg="blue", fg="white")
+        self.Bill_amount_label.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+
+        discount_frame = tk.Frame(billing_info, bg="orange")
+        discount_frame.grid(row=0, column=1, sticky="nsew", padx=2, pady=2)
+        tk.Label(discount_frame, text="Discount %", font=("times new roman", 15, "bold"), bg="orange", fg="white").pack(anchor="center")
+        self.Discount_Entry = tk.Entry(discount_frame, font=("times new roman", 12), width=8)
+        self.Discount_Entry.pack(anchor="center", padx=5, pady=2)
+
+        self.Bill_netpay_label = tk.Label(billing_info, text="Net Pay\n[0]", font=("times new roman", 15, "bold"), bg="blue", fg="white")
+        self.Bill_netpay_label.grid(row=0, column=2, sticky="nsew", padx=2, pady=2)
+
+        tk.Button(billing_info, text="Print", font=("times new roman", 15), bg="white", command=self.Print_File).grid(row=1, column=0, sticky="nsew", padx=2, pady=2)
+        tk.Button(billing_info, text="Clear All", font=("times new roman", 15), bg="lightblue", command=self.clear_all).grid(row=1, column=1, sticky="nsew", padx=2, pady=2)
+        tk.Button(billing_info, text="Generate\nSave Bill", font=("times new roman", 15), bg="pink", command=self.generate_bill).grid(row=1, column=2, sticky="nsew", padx=2, pady=2)
+
+        self.Billsection_show()
+
+    # Function mappings
+    def Billsection_show(self):
+        self.f.Billsection_show(self.product_table)
+
+    def Billsection_search(self):
+        self.f.Billsection_search((self.root, self.Search_Name_Entry, self.product_table))
+
+    def Billsecton_search_all(self):
+        self.f.Billsecton_search_all(self.product_table, (self.root,))
+
+    def Billsection_get_data(self, event=None):
+        self.f.Billsection_get_data((self.root, self.price_perqty_Entry, self.p_name_Entry, self.Instock_label, self.pid, self.product_table))
+
+    def Add_update_Cart(self):
+        self.f.Add_updateCart((self.root, self.Quantity_Entry, self.p_name_Entry, self.price_perqty_Entry, self.pid, self.cart_list,
+                               self.Discount_Entry, self.cart_table, self.cart, self.Bill_netpay_label, self.Bill_amount_label))
+
+    def generate_bill(self):
+        self.f.generate_bill((self.Custumer_Name_E, self.Custumer_contact_E, self.cart_list, self.Discount_Entry,
+                              self.Bill_netpay_label, self.Bill_amount_label, self.bill_area, self.product_table, self.root))
+
+    def clear_cart(self):
+        self.f.clear_cart((self.price_perqty_Entry, self.p_name_Entry, self.pid, self.Quantity_Entry,
+                           self.Instock_label, self.Bill_amount_label, self.Bill_netpay_label, self.Discount_Entry))
+
+    def clear_all(self):
+        self.f.clear_all(
+            (self.price_perqty_Entry, self.p_name_Entry, self.pid, self.Quantity_Entry,
+             self.Instock_label, self.Bill_amount_label, self.Bill_netpay_label, self.Discount_Entry),
+            (self.root, self.cart_list, self.cart_table, self.cart, self.bill_area, self.Custumer_Name_E, self.Custumer_contact_E)
+        )
+        
+
+    def Print_File(self):
+        self.f.print_file(self.bill_area)
+
+    def get_cart_data(self, event=None):
+        mytuple = (self.root, self.cart_table, self.price_perqty_Entry, self.p_name_Entry, self.pid, self.Instock_label)
+        self.f.get_cart_data(mytuple)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = Billing_area(root)
+    root.mainloop()
+
+    #update2
+import tkinter as tk
+from tkinter import *
+from tkinter import ttk
+import sqlite3
+from tkinter import messagebox
+import Functions
+
+class Billing_area:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Inventory Management System")
+        self.root.geometry("1200x650")
+        self.root.minsize(800, 600)
+        self.f = Functions.function()
+        self.root.wm_attributes("-topmost", True)
+        self.root.focus_force()
+        self.cart_list = []
+        self.pid = StringVar()
+        self.file_print = 0
+
+        self.root.grid_rowconfigure(1, weight=1)
+        for i in range(3):
+            self.root.grid_columnconfigure(i, weight=1, uniform='equal')
+
+        self.create_navbar()
+        self.create_left_frame()
+        self.create_middle_frame()
+        self.create_right_frame()
+
+    def create_navbar(self):
+        navbar = tk.Frame(self.root, bg="#333", height=50)
+        navbar.grid(row=0, column=0, columnspan=3, sticky="nsew")
+        for i in range(5):
+            navbar.grid_columnconfigure(i, weight=1)
+
+        nav_buttons = ["Home", "Products", "Cart", "Billing", "Logout"]
+        for i, btn in enumerate(nav_buttons):
+            tk.Button(navbar, text=btn, bg="#555", fg="white",
+                      font=("times new roman", 12, "bold"), bd=0).grid(row=0, column=i, sticky="nsew", padx=1, pady=1)
+
+    def create_left_frame(self):
+        self.left_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE)
+        self.left_frame.grid(row=1, column=0, sticky="nsew")
+        self.left_frame.grid_rowconfigure(1, weight=1)
+        self.left_frame.grid_columnconfigure(0, weight=1)
+
+        header = tk.Label(self.left_frame, text="All Products", font=("times new roman", 30, "bold"),
+                          fg="white", bg="#000066")
+        header.pack(fill="x")
+
+        search_frame = tk.Frame(self.left_frame,bg="white",borderwidth=2, bd=2, relief=tk.RIDGE)
+        search_frame.pack(fill="x", padx=3, pady=10)
+
+        for i in range(3):
+            search_frame.grid_columnconfigure(i, weight=1)
+
+        tk.Label(search_frame, text="Search Product | By Name", font=("times new roman", 18, "bold"), fg="red", width=35, anchor="w",bg="white" ,padx=2, pady=5).grid(row=0, column=0, columnspan=2, sticky="w", pady=5)
+        tk.Button(search_frame, text="Search All", font=("times new roman", 15, "bold"), width=17, padx=2, pady=2, bg="#d6eaf8", command=self.Billsecton_search_all).grid(row=0, column=2, sticky="e", padx=5, pady=5)
+
+        tk.Label(search_frame, text="Product Name", font=("times new roman", 17), width=16,bg="white" ,anchor="w").grid(row=1, column=0, sticky="w", padx=2, pady=5)
+        self.Search_Name_Entry = tk.Entry(search_frame, font=("times new roman", 15), bg="lightyellow")
+        self.Search_Name_Entry.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+        tk.Button(search_frame, text="Search", font=("times new roman", 15, "bold"), bg="#aed6f1", command=self.Billsection_search).grid(row=1, column=2, sticky="ew", padx=5, pady=5)
+
+        product_frame = tk.Frame(self.left_frame)
+        product_frame.pack(fill="both", expand=True, padx=5, pady=5)
+
+        self.product_table = ttk.Treeview(product_frame, columns=("pid", "name", "price", "qty", "status"),
+                                          show="headings")
+        for col in self.product_table["columns"]:
+            self.product_table.heading(col, text=col.upper())
+            self.product_table.column(col, width=100, anchor="center")
+
+        y_scroll = ttk.Scrollbar(product_frame, orient="vertical", command=self.product_table.yview)
+        x_scroll = ttk.Scrollbar(product_frame, orient="horizontal", command=self.product_table.xview)
+        self.product_table.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+
+        y_scroll.pack(fill="y", side="right")
+        x_scroll.pack(fill="x", side="bottom")
+        self.product_table.pack(fill="both", expand=True, side="left")
+
+        self.product_table.bind('<ButtonRelease-1>', self.Billsection_get_data)
+
+    def create_middle_frame(self):
+        self.middle_frame = tk.Frame(self.root, bd=2,borderwidth=2, relief=tk.RIDGE, bg="white")
+        self.middle_frame.grid(row=1, column=1, sticky="nsew")
+        self.middle_frame.grid_rowconfigure(1, weight=1)
+        self.middle_frame.grid_columnconfigure(0, weight=1)
+        self.Customer_detail = tk.Frame(self.middle_frame,bg="white",borderwidth=2, bd=2, relief=tk.RIDGE)
+        self.Customer_detail.pack(fill="x", padx=3, pady=5)
+
+        tk.Label(self.Customer_detail, text="Customer Detail", font=("times new roman", 27, "bold"), bg="#c0c0c0").pack(fill="x")
+
+        top_form = tk.Frame(self.Customer_detail, bg="white")
+        top_form.pack(fill="x", padx=10, pady=5)
+
+        for i in range(4):
+            top_form.grid_columnconfigure(i, weight=1)
+
+        tk.Label(top_form, text="Name", font=("times new roman", 15), bg="white", width=11).grid(row=0, column=0, sticky="w", padx=1, pady=5)
+        self.Custumer_Name_E = tk.Entry(top_form, font=("times new roman", 15), bg="lightyellow")
+        self.Custumer_Name_E.grid(row=0, column=1, sticky="ew", padx=3, pady=5)
+
+        tk.Label(top_form, text="Contact", font=("times new roman", 15), bg="white", width=13).grid(row=0, column=2, sticky="w", padx=3, pady=5)
+        self.Custumer_contact_E = tk.Entry(top_form, font=("times new roman", 15), bg="lightyellow")
+        self.Custumer_contact_E.grid(row=0, column=3, sticky="ew", padx=3, pady=5)
+
+        cart_frame = tk.Frame(self.middle_frame,bd=2,borderwidth=2,bg="white",relief=tk.RIDGE)
+        cart_frame.pack(fill="both", expand=True, padx=3, pady=5)
+
+        self.Cart_details = tk.Frame(cart_frame,bg="#c0c0c0", relief=tk.RIDGE)
+        self.Cart_details.pack(fill="x", padx=3, pady=3)
+        self.Cart_details.grid_columnconfigure(0,weight=1)
+
+        self.cart_label = Label(self.Cart_details, text="Cart ", font=("times new roman", 14, "bold"), bg="#c0c0c0",fg="black" ,justify="left")
+        self.cart_label.grid(row=0,column=0,sticky="w")
+        self.cart = Label(self.Cart_details, text="Total Products [0]", font=("times new roman", 14, "bold"), bg="#c0c0c0",fg="black" ,justify="left")
+        self.cart.grid(row=0,column=1,sticky="w")
+
+
+        self.cart_table = ttk.Treeview(cart_frame, columns=("pid", "name", "price", "qty"), show="headings")
+        for col in self.cart_table["columns"]:
+            self.cart_table.heading(col, text=col.upper())
+            self.cart_table.column(col, width=100, anchor="center")
+
+        y_scroll = ttk.Scrollbar(self.cart_table, orient="vertical", command=self.product_table.yview)
+        x_scroll = ttk.Scrollbar(self.cart_table, orient="horizontal", command=self.product_table.xview)
+        self.cart_table.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+        y_scroll.pack(fill="y", side="right")
+        x_scroll.pack(fill="x", side="bottom")
+        self.cart_table.pack(fill="both", expand=True, side="left")
+        self.cart_table.bind("<ButtonRelease-1>", self.get_cart_data)
+
+        self.Product_details = tk.Frame(self.middle_frame,bg="white",borderwidth=2, bd=2, relief=tk.RIDGE)
+        self.Product_details.pack(fill="x", padx=3, pady=3)
+
+        entry_frame = tk.Frame(self.Product_details, bg="white",bd=2,borderwidth=2)
+        entry_frame.pack(fill="x", padx=3, pady=3)
+
+        for i in range(6):
+            entry_frame.grid_columnconfigure(i, weight=1)
+
+        tk.Label(entry_frame, text="Product Name", font=("times new roman", 15), bg="white").grid(row=0, column=0, sticky="w", padx=5, pady=3)
+        self.p_name_Entry = ttk.Entry(entry_frame,state="readonly", font=("times new roman", 18))
+        self.p_name_Entry.grid(row=1, column=0, sticky="ew", padx=5, pady=5)
+
+        tk.Label(entry_frame, text="Price per Qty", font=("times new roman", 15), bg="white").grid(row=0, column=2, sticky="w", padx=5, pady=3)
+        self.price_perqty_Entry = ttk.Entry(entry_frame, font=("times new roman", 18),state="readonly")
+        self.price_perqty_Entry.grid(row=1, column=2, sticky="ew", padx=5, pady=5)
+
+        tk.Label(entry_frame, text="Quantity", font=("times new roman", 15), bg="white").grid(row=0, column=4, sticky="w", padx=5, pady=3)
+        self.Quantity_Entry = tk.Entry(entry_frame, font=("times new roman", 18), bg="lightyellow")
+        self.Quantity_Entry.grid(row=1, column=4, sticky="ew", padx=5, pady=5)
+
+        button_frame = tk.Frame(self.Product_details, bg="white")
+        button_frame.pack(fill="x", padx=3, pady=3)
+
+        self.Instock_label = tk.Label(button_frame, text="In Stock[0]", font=("times new roman", 18), bg="white", anchor="w")
+        self.Instock_label.pack(side="left", padx=5, pady=5)
+        tk.Button(button_frame, text="Clear", font=("times new roman", 16), bg="lightgray", padx=10, command=self.clear_cart).pack(side="left", padx=5, pady=5)
+        tk.Button(button_frame, text="Add|Update Cart", font=("times new roman", 15, "bold"), padx=5, bg="orange", width=25, command=self.Add_update_Cart).pack(side="left", padx=5, pady=5)
+
+    def create_right_frame(self):
+        self.right_frame = tk.Frame(self.root, bd=2, relief=tk.RIDGE)
+        self.right_frame.grid(row=1, column=2, sticky="nsew")
+        self.right_frame.grid_rowconfigure(1, weight=1)
+        self.right_frame.grid_columnconfigure(0, weight=1)
+
+        tk.Label(self.right_frame, text="Customer Billing Area", font=("times new roman", 27, "bold"), bg="orange").pack(fill="x")
+
+        self.bill_area = tk.Text(self.right_frame, wrap="word", bg="#d3d3d3", font=("times new roman", 11))
+        self.bill_area.pack(fill="both", expand=True, padx=10, pady=5)
+
+        billing_info = tk.Frame(self.right_frame)
+        billing_info.pack(fill="x", padx=10, pady=5)
+
+        for i in range(3):
+            billing_info.grid_columnconfigure(i, weight=1)
+
+        self.Bill_amount_label = tk.Label(billing_info, text="Bill Amount\n[0]", font=("times new roman", 15, "bold"), bg="blue", fg="white")
+        self.Bill_amount_label.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+
+        discount_frame = tk.Frame(billing_info, bg="orange")
+        discount_frame.grid(row=0, column=1, sticky="nsew", padx=2, pady=2)
+        tk.Label(discount_frame, text="Discount %", font=("times new roman", 15, "bold"), bg="orange", fg="white").pack(anchor="center")
+        self.Discount_Entry = tk.Entry(discount_frame, font=("times new roman", 12), width=8)
+        self.Discount_Entry.pack(anchor="center", padx=5, pady=2)
+
+        self.Bill_netpay_label = tk.Label(billing_info, text="Net Pay\n[0]", font=("times new roman", 15, "bold"), bg="blue", fg="white")
+        self.Bill_netpay_label.grid(row=0, column=2, sticky="nsew", padx=2, pady=2)
+
+        tk.Button(billing_info, text="Print", font=("times new roman", 15), bg="white", command=self.Print_File).grid(row=1, column=0, sticky="nsew", padx=2, pady=2)
+        tk.Button(billing_info, text="Clear All", font=("times new roman", 15), bg="lightblue", command=self.clear_all).grid(row=1, column=1, sticky="nsew", padx=2, pady=2)
+        tk.Button(billing_info, text="Generate\nSave Bill", font=("times new roman", 15), bg="pink", command=self.generate_bill).grid(row=1, column=2, sticky="nsew", padx=2, pady=2)
+
+        self.Billsection_show()
+
+    # Function mappings
+    def Billsection_show(self):
+        self.f.Billsection_show(self.product_table)
+
+    def Billsection_search(self):
+        self.f.Billsection_search((self.root, self.Search_Name_Entry, self.product_table))
+
+    def Billsecton_search_all(self):
+        self.f.Billsecton_search_all(self.product_table, (self.root,))
+
+    def Billsection_get_data(self, event=None):
+        self.f.Billsection_get_data((self.root, self.price_perqty_Entry, self.p_name_Entry, self.Instock_label, self.pid, self.product_table))
+
+    def Add_update_Cart(self):
+        self.f.Add_updateCart((self.root, self.Quantity_Entry, self.p_name_Entry, self.price_perqty_Entry, self.pid, self.cart_list,
+                               self.Discount_Entry, self.cart_table, self.cart, self.Bill_netpay_label, self.Bill_amount_label))
+
+    def generate_bill(self):
+        self.f.generate_bill((self.Custumer_Name_E, self.Custumer_contact_E, self.cart_list, self.Discount_Entry,
+                              self.Bill_netpay_label, self.Bill_amount_label, self.bill_area, self.product_table, self.root))
+
+    def clear_cart(self):
+        self.f.clear_cart((self.price_perqty_Entry, self.p_name_Entry, self.pid, self.Quantity_Entry,
+                           self.Instock_label, self.Bill_amount_label, self.Bill_netpay_label, self.Discount_Entry))
+
+    def clear_all(self):
+        self.f.clear_all(
+            (self.price_perqty_Entry, self.p_name_Entry, self.pid, self.Quantity_Entry,
+             self.Instock_label, self.Bill_amount_label, self.Bill_netpay_label, self.Discount_Entry),
+            (self.root, self.cart_list, self.cart_table, self.cart, self.bill_area, self.Custumer_Name_E, self.Custumer_contact_E)
+        )
+        
+
+    def Print_File(self):
+        self.f.print_file(self.bill_area)
+
+    def get_cart_data(self, event=None):
+        mytuple = (self.root, self.cart_table, self.price_perqty_Entry, self.p_name_Entry, self.pid, self.Instock_label)
+        self.f.get_cart_data(mytuple)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = Billing_area(root)
+    root.mainloop()
+
+
+
+
+
+from tkinter import *
+from tkinter import ttk
+import mysql.connector
+from tkinter import messagebox
+import sqlite3
+from tkcalendar import Calendar
+import string
+from datetime import datetime
+import Functions
+from suplyre import SupplyreClass
+
+class page2:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Inventory Management System")
+        self.root.geometry("1335x615+200+135")
+        self.root.minsize(1000, 600)
+        self.root.configure(bg="#f0f0f0")
+        self.f = Functions.function()
+        
+        self.lbl = None
+        self.lbl1 = None
+        
+        self.root.wm_attributes("-topmost", True)
+        self.root.focus_force()
+
+        # Search Frame
+        self.create_search_frame()
+        
+        # Employee Details Frame
+        self.create_employee_details_frame()
+        
+        # Employee Form Fields
+        self.create_employee_form()
+        
+        # Buttons
+        self.create_buttons()
+        
+        # Table
+        self.create_table()
+        
+        self.generateeId()
+        self.show_data(self.frameTreaview)
+
+    def create_search_frame(self):
+        self.frame = LabelFrame(self.root, text="Search Employee", font=("times new roman", 20, "bold"), bd=3, bg="#e6e6e6")
+        self.frame.place(relx=0.05, rely=0.02, relwidth=0.9, relheight=0.12)
+        
+        self.searchby = ttk.Combobox(self.frame, values=("Select", "Email", "name", "contact"), state="readonly", justify=CENTER, font=("arial", 15, "bold"))
+        self.searchby.place(relx=0.02, rely=0.25, relwidth=0.2)
+        self.searchby.current(0)
+        
+        self.search1 = ttk.Entry(self.frame, font=("arial", 15, "bold"))
+        self.search1.place(relx=0.3, rely=0.25, relwidth=0.4)
+        
+        btn_Search = Button(self.frame, text="Search", command=self.Search_data, bg="#4caf50", fg="white", font=("times new roman", 20, "bold"), cursor="hand2", relief=RAISED)
+        btn_Search.place(relx=0.75, rely=0.1, relwidth=0.1, relheight=0.8)
+
+        btn_Back = Button(self.frame, text="Back", command=self.root.destroy, bg="#609d8b", fg="white", font=("times new roman", 20, "bold"), cursor="hand2", relief=RAISED)
+        btn_Back.place(relx=0.86, rely=0.1, relwidth=0.1, relheight=0.8)
+
+    
+    def create_employee_details_frame(self):
+        self.frame2 = Label(self.root, text="Employee Details", font=("times new roman", 20, "bold"), bg="#333", fg="white")
+        self.frame2.place(relx=0.03, rely=0.16, relwidth=0.94, relheight=0.05)
+    
+    def create_employee_form(self):
+        labels = ["Emp No.", "Name", "Email", "Gender", "Contact No.", "D.O.B.", "D.O.J.", "Password", "User Type", "Address", "Salary"]
+        positions = [
+            (0.0001, 0.23), (0.0001, 0.35), (0.0001, 0.47),
+            (0.33, 0.23), (0.66, 0.23),
+            (0.33, 0.35), (0.66, 0.35),
+            (0.332, 0.47), (0.66, 0.47),
+            (0.0001, 0.59), (0.33, 0.59)
+        ]
+        
+        self.entries = {}
+        for i, label in enumerate(labels):
+            lbl = Label(self.root, text=label, font=("times new roman", 14, "bold"), bg="#f0f0f0")
+            lbl.place(relx=positions[i][0], rely=positions[i][1], relwidth=0.12, relheight=0.04)
+            
+            if label in ["Gender", "User Type"]:
+                values = ("Select", "Male", "Female") if label == "Gender" else ("Admin", "Employee")
+                entry = ttk.Combobox(self.root, values=values, state="readonly", justify=CENTER, font=("arial", 12, "bold"))
+                entry.current(0)
+            elif label in ["D.O.B.", "D.O.J."]:
+                entry = ttk.Entry(self.root, font=("arial", 12, "bold"), state="readonly")
+                entry.bind("<Button-1>", self.Show_caleder_dob if label == "D.O.B." else self.Show_caleder_doj)
+            elif label == "Address":
+                entry = Text(self.root, font=("arial", 12, "bold"))
+            else:
+                entry = ttk.Entry(self.root, font=("arial", 12, "bold"))
+            
+            entry.place(relx=positions[i][0] + 0.15, rely=positions[i][1], relwidth=0.18, relheight=0.04)
+            self.entries[label] = entry
+    
+    def create_buttons(self):
+        colors = ["#2196F3", "#4CAF50", "#f44336", "#FFC107"]
+        texts = ["Save", "Update", "Delete", "Clear"]
+        commands = [self.ad_data, self.Update_data, self.Delete, self.clear_data]
+        
+        for i in range(4):
+            btn = Button(self.root, text=texts[i], command=commands[i], bg=colors[i], fg="white", font=("times new roman", 12, "bold"), cursor="hand2", relief=RAISED)
+            btn.place(relx=0.42 + i*0.14, rely=0.64, relwidth=0.13, relheight=0.05)
+    
+    def create_table(self):
+        self.frame3 = Frame(self.root, bg="white")
+        self.frame3.place(relx=0.03, rely=0.7, relwidth=0.94, relheight=0.25)
+        
+        self.scrolly = Scrollbar(self.frame3, orient=VERTICAL)
+        self.scrollx = Scrollbar(self.frame3, orient=HORIZONTAL)
+        
+        self.frameTreaview = ttk.Treeview(self.frame3,columns=("eid", "name", "email", "gender", "contact", "dob", "doj", "pass", "utype", "address", "salary"),yscrollcommand=self.scrolly.set, xscrollcommand=self.scrollx.set)
+        self.scrolly.pack(side=RIGHT, fill=Y)
+        self.scrollx.pack(side=BOTTOM, fill=X)
+        self.scrollx.config(command=self.frameTreaview.xview)
+        self.scrolly.config(command=self.frameTreaview.yview)
+        
+        for col in self.frameTreaview["columns"]:
+            self.frameTreaview.heading(col, text=col.upper())
+            self.frameTreaview.column(col, width=120)
+        
+        self.frameTreaview["show"] = "headings"
+        self.frameTreaview.pack(fill=BOTH, expand=1)
+        self.frameTreaview.bind("<ButtonRelease-1>", self.Get_Data)
+        self.data_tuple =  (self.root, self.entries["Emp No."], self.entries["Name"], self.entries["Email"], self.entries["Gender"], self.entries["Contact No."],self.entries["D.O.B."], self.entries["D.O.J."], 
+            self.entries["Password"], self.entries["User Type"], self.entries["Address"], self.entries["Salary"], self.frameTreaview)
+
+    def ad_data(self):self.f.add(self.data_tuple)
+    def clear_data(self): self.f.clear(self.data_tuple)
+    def show_data(self, frameTreaview): self.f.show(frameTreaview, self.root)
+    def generateeId(self): self.f.generateeid((self.entries["Emp No."],))
+    def Get_Data(self, event=None):
+        region = self.frameTreaview.identify_region(event.x, event.y)
+        row_id = self.frameTreaview.identify_row(event.y)
+        if region != "cell" or not row_id:
+            return
+        self.f.get_data(self.data_tuple)
+    def Update_data(self): self.f.update(self.data_tuple)
+    def Delete(self): self.f.delete(self.data_tuple)
+    def Search_data(self): self.f.search((self.root, self.search1, self.searchby, self.frameTreaview))
+
+    def Show_caleder_dob(self, event=None): 
+        if not self.lbl or not self.lbl.winfo_exists():
+            self.lbl = Label(self.root,bg="white")
+        x = self.entries['D.O.B.'].winfo_x()
+        y = self.entries['D.O.B.'].winfo_y() + self.entries["D.O.B."].winfo_height() + 5
+        self.lbl.place(x=x, y=y, width=200, height=300)
+        self.f.show_calendar((self.entries["D.O.B."], self.root), self.lbl)
+
+    def Show_caleder_doj(self, event=None):
+        if not self.lbl1 or not self.lbl1.winfo_exists():
+            self.lbl1 = Label(self.root, bg="white")
+        x = self.entries["D.O.J."].winfo_x()
+        y = self.entries["D.O.J."].winfo_y() + self.entries["D.O.J."].winfo_height() + 5
+        self.lbl1.place(x=x, y=y, width=260, height=300)
+        self.f.show_calendar_doj((self.entries["D.O.J."], self.root), self.lbl1)
+    
+
+if __name__ == "__main__":
+    root = Tk()
+    obj = page2(root)
+    root.mainloop()
+
+# Employee update
+from tkinter import *
+from tkinter import ttk
+import mysql.connector
+from tkinter import messagebox
+import sqlite3
+from tkcalendar import Calendar
+import string
+from datetime import datetime
+import Functions
+from suplyre import SupplyreClass
+
+class page2:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Inventory Management System")
+        self.root.geometry("1335x615+200+135")
+        self.root.minsize(1000, 600)
+        self.root.configure(bg="#f0f0f0")
+        self.f = Functions.function()
+        
+        self.lbl = None
+        self.lbl1 = None
+        
+        self.root.wm_attributes("-topmost", True)
+        self.root.focus_force()
+
+        # Search Frame
+        self.create_search_frame()
+        
+        # Employee Details Frame
+        self.create_employee_details_frame()
+        
+        # Employee Form Fields
+        self.create_employee_form()
+        
+        # Buttons
+        self.create_buttons()
+        
+        # Table
+        self.create_table()
+        
+        self.generateeId()
+        self.create_navbar()
+        self.show_data(self.frameTreaview)
+
+    def create_navbar(self):
+        navbar = Frame(self.root, bg="#222", height=55)
+        navbar.pack(fill=X)
+
+        title = Label(navbar, bg="#222", fg="white",
+                      font=("Helvetica", 18, "bold"))
+        title.pack(side=LEFT, padx=20)
+
+        btn_config = [
+            ("Home", None),
+            ("Employee", None),
+            ("Categories", None),
+            ("Billing", None),
+            ("Product", None),
+            ("Sales", None),
+        ]
+        for name, cmd in btn_config:
+            Button(navbar, text=name, bg="#333", fg="white", font=("Arial", 12, "bold"),
+                   bd=0, cursor="hand2", activebackground="#555", activeforeground="white",
+                   command=cmd).pack(side=LEFT, padx=15, pady=8)
+
+    def create_search_frame(self):
+        self.frame = LabelFrame(self.root, text="Search Employee", font=("times new roman", 20, "bold"), bd=3, bg="#e6e6e6")
+        self.frame.place(relx=0.05, rely=0.05, relwidth=0.9, relheight=0.11)
+
+        
+        self.searchby = ttk.Combobox(self.frame, values=("Select", "Email", "name", "contact"), state="readonly", justify=CENTER, font=("arial", 15, "bold"))
+        self.searchby.place(relx=0.02, rely=0.20, relwidth=0.2)
+        self.searchby.current(0)
+        
+        self.search1 = ttk.Entry(self.frame, font=("arial", 15, "bold"))
+        self.search1.place(relx=0.3, rely=0.25, relwidth=0.4)
+        
+        btn_Search = Button(self.frame, text="Search", command=self.Search_data, bg="#4caf50", fg="white", font=("times new roman", 20, "bold"), cursor="hand2", relief=RAISED)
+        btn_Search.place(relx=0.75, rely=0.1, relwidth=0.1, relheight=0.8)
+
+        btn_Back = Button(self.frame, text="Back", command=self.root.destroy, bg="#609d8b", fg="white", font=("times new roman", 20, "bold"), cursor="hand2", relief=RAISED)
+        btn_Back.place(relx=0.86, rely=0.1, relwidth=0.1, relheight=0.8)
+
+    
+    def create_employee_details_frame(self):
+        self.frame2 = Label(self.root, text="Employee Details", font=("times new roman", 20, "bold"), bg="#333", fg="white")
+        self.frame2.place(relx=0.03, rely=0.17, relwidth=0.94, relheight=0.05)
+    
+    def create_employee_form(self):
+        labels = ["Emp No.", "Name", "Email", "Gender", "Contact No.", "D.O.B.", "D.O.J.", "Password", "User Type", "Address", "Salary"]
+        positions = [
+            (0.0001, 0.23), (0.0001, 0.35), (0.0001, 0.47),
+            (0.33, 0.23), (0.66, 0.23),
+            (0.33, 0.35), (0.66, 0.35),
+            (0.332, 0.47), (0.66, 0.47),
+            (0.0001, 0.59), (0.33, 0.59)
+        ]
+        
+        self.entries = {}
+        for i, label in enumerate(labels):
+            lbl = Label(self.root, text=label, font=("times new roman", 14, "bold"), bg="#f0f0f0")
+            lbl.place(relx=positions[i][0], rely=positions[i][1], relwidth=0.12, relheight=0.04)
+            
+            if label in ["Gender", "User Type"]:
+                values = ("Select", "Male", "Female") if label == "Gender" else ("Admin", "Employee")
+                entry = ttk.Combobox(self.root, values=values, state="readonly", justify=CENTER, font=("arial", 12, "bold"))
+                entry.current(0)
+            elif label in ["D.O.B.", "D.O.J."]:
+                entry = ttk.Entry(self.root, font=("arial", 12, "bold"), state="readonly")
+                entry.bind("<Button-1>", self.Show_caleder_dob if label == "D.O.B." else self.Show_caleder_doj)
+            elif label == "Address":
+                entry = Text(self.root, font=("arial", 12, "bold"))
+            else:
+                entry = ttk.Entry(self.root, font=("arial", 12, "bold"))
+            
+            entry.place(relx=positions[i][0] + 0.15, rely=positions[i][1], relwidth=0.18, relheight=0.04)
+            self.entries[label] = entry
+    
+    def create_buttons(self):
+        colors = ["#2196F3", "#4CAF50", "#f44336", "#FFC107"]
+        texts = ["Save", "Update", "Delete", "Clear"]
+        commands = [self.ad_data, self.Update_data, self.Delete, self.clear_data]
+        
+        for i in range(4):
+            btn = Button(self.root, text=texts[i], command=commands[i], bg=colors[i], fg="white", font=("times new roman", 12, "bold"), cursor="hand2", relief=RAISED)
+            btn.place(relx=0.42 + i*0.14, rely=0.64, relwidth=0.13, relheight=0.05)
+    
+    def create_table(self):
+        self.frame3 = Frame(self.root, bg="white")
+        self.frame3.place(relx=0.03, rely=0.7, relwidth=0.94, relheight=0.25)
+        
+        self.scrolly = Scrollbar(self.frame3, orient=VERTICAL)
+        self.scrollx = Scrollbar(self.frame3, orient=HORIZONTAL)
+        
+        self.frameTreaview = ttk.Treeview(
+            self.frame3,
+            columns=("eid", "name", "email", "gender", "contact", "dob", "doj", "pass", "utype", "address", "salary"),
+            yscrollcommand=self.scrolly.set, xscrollcommand=self.scrollx.set
+        )
+        
+        self.scrolly.pack(side=RIGHT, fill=Y)
+        self.scrollx.pack(side=BOTTOM, fill=X)
+        self.scrollx.config(command=self.frameTreaview.xview)
+        self.scrolly.config(command=self.frameTreaview.yview)
+        
+        for col in self.frameTreaview["columns"]:
+            self.frameTreaview.heading(col, text=col.upper())
+            self.frameTreaview.column(col, width=120)
+        
+        self.frameTreaview["show"] = "headings"
+        self.frameTreaview.pack(fill=BOTH, expand=1)
+        self.frameTreaview.bind("<ButtonRelease-1>", self.Get_Data)
+        self.data_tuple =  (
+            self.root,
+            self.entries["Emp No."],
+            self.entries["Name"],
+            self.entries["Email"],
+            self.entries["Gender"],
+            self.entries["Contact No."],
+            self.entries["D.O.B."],
+            self.entries["D.O.J."],
+            self.entries["Password"],
+            self.entries["User Type"],
+            self.entries["Address"],
+            self.entries["Salary"],
+            self.frameTreaview
+        )
+
+    def ad_data(self):self.f.add(self.data_tuple)
+    def clear_data(self): self.f.clear(self.data_tuple)
+    def show_data(self, frameTreaview): self.f.show(frameTreaview, self.root)
+    def generateeId(self): self.f.generateeid((self.entries["Emp No."],))
+    def Get_Data(self, event=None):self.f.get_data(self.data_tuple)
+    def Update_data(self): self.f.update(self.data_tuple)
+    def Delete(self): self.f.delete(self.data_tuple)
+    def Search_data(self): self.f.search((self.root, self.search1, self.searchby, self.frameTreaview))
+
+    def Show_caleder_dob(self, event=None): 
+        if not self.lbl or not self.lbl.winfo_exists():
+            self.lbl = Label(self.root,bg="white")
+        x = self.entries['D.O.B.'].winfo_x()
+        y = self.entries['D.O.B.'].winfo_y() + self.entries["D.O.B."].winfo_height() + 5
+        self.lbl.place(x=x, y=y, width=200, height=300)
+        self.f.show_calendar((self.entries["D.O.B."], self.root), self.lbl)
+
+    def Show_caleder_doj(self, event=None):
+        if not self.lbl1 or not self.lbl1.winfo_exists():
+            self.lbl1 = Label(self.root, bg="white")
+        x = self.entries["D.O.J."].winfo_x()
+        y = self.entries["D.O.J."].winfo_y() + self.entries["D.O.J."].winfo_height() + 5
+        self.lbl1.place(x=x, y=y, width=260, height=300)
+        self.f.show_calendar_doj((self.entries["D.O.J."], self.root), self.lbl1)
+    
+
+if __name__ == "__main__":
+    root = Tk()
+    obj = page2(root)
+    root.mainloop()
