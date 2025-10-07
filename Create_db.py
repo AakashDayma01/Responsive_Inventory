@@ -7,6 +7,8 @@ def create_db():
     cur.execute("create table if not exists Suplier(Invoice integer primary key autoincrement, name text, contact text, description text)")
     cur.execute("create table if not exists category(cid integer primary key autoincrement, name text)")
     cur.execute("create table if not exists product(pid integer primary key autoincrement, supplier varchar(225), category varchar(225), name varchar(225), price varchar(225), qty varchar(225), status varchar(225))")
+    
+    cur.execute("create table if not exists Users(id integer primary key autoincrement, shop_name varchar(255), owner_name varchar(255), email varchar(255) unique, phone_number varchar(20), address text, password varchar(255))")
     con.commit()
 
 create_db()
